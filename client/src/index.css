@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.9rem;
+  --background: oklch(0.985 0.004 270);
+  --foreground: oklch(0.18 0.02 270);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 270);
+  --primary: oklch(0.49 0.26 292);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.015 280);
+  --secondary-foreground: oklch(0.3 0.04 280);
+  --muted: oklch(0.955 0.008 270);
+  --muted-foreground: oklch(0.52 0.025 270);
+  --accent: oklch(0.94 0.04 285);
+  --accent-foreground: oklch(0.32 0.13 292);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.9 0.012 270);
+  --input: oklch(0.9 0.012 270);
+  --ring: oklch(0.75 0.18 292);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { background: #faf9ff; }
+  body { @apply bg-background text-foreground; margin: 0; min-width: 320px; font-family: "DM Sans", sans-serif; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), a[href] { @apply cursor-pointer; }
+  button { transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+  button:active:not(:disabled) { transform: scale(.98); }
+}
+
+@layer components {
+  .display { font-family: "Space Grotesk", sans-serif; }
+  .shopex-shell { background: radial-gradient(circle at 50% -10%, rgba(237,233,254,.9), transparent 35%), #faf9ff; }
+  .shopex-noise { background-image: linear-gradient(rgba(109,40,217,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(109,40,217,.025) 1px, transparent 1px); background-size: 32px 32px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shopex-enter { animation: shopex-enter .45s cubic-bezier(.23,1,.32,1) both; }
+  .shopex-field-shake { animation: shopex-field-shake .32s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes shopex-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shopex-field-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #f7f5ff; }
+::-webkit-scrollbar-thumb { background: #d6ccf4; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #b9a8ea; }

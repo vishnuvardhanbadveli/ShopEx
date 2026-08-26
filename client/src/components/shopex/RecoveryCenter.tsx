@@ -1,0 +1,11 @@
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock3 } from "lucide-react";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import type { PersistedOrder } from "@/lib/shopEx";
+
+export function RecoveryCenter({ orders }: { orders: PersistedOrder[] }) {
+  const [, setLocation] = useLocation();
+  const recoverable = orders.filter((order) => order.status === "created" || order.status === "verification_pending" || order.status === "verified" || order.status === "failed").slice(0, 5);
+  if (!recoverable.length) return null;
+  return <section className="mt-8 rounded-[22px] border border-amber-100 bg-amber-50/70 p-6 sm:p-7"><div className="flex items-start gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-white text-amber-700"><Clock3 className="h-5 w-5" /></div><div><p className="text-xs font-semibold uppercase tracking-[.16em] text-amber-700">Recovery center</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.04em] text-amber-950">Orders that need attention</h2><p className="mt-1 text-sm text-amber-900/70">These actions come from persisted payment state. ShopEx will not claim success while provider confirmation is pending.</p></div></div><div className="mt-5 space-y-3">{recoverable.map((order) => { const failed = order.status === "failed"; const waiting = order.status === "verification_pending" || order.status === "verified"; const Icon = failed ? AlertTriangle : waiting ? Clock3 : CheckCircle2; const label = failed ? "Payment failed — review next step" : waiting ? "Payment verification pending" : "Secure checkout can be resumed"; return <div key={order.orderId} className="flex flex-wrap items-center gap-3 rounded-[15px] bg-white/80 p-4"><Icon className={`h-5 w-5 shrink-0 ${failed ? "text-red-500" : waiting ? "text-amber-600" : "text-violet-600"}`} /><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-900">{order.product?.name ?? "Order record"}</p><p className="mt-1 text-xs text-slate-500">{label} · {order.orderId}</p></div><Button size="sm" variant="outline" onClick={() => setLocation(`/profile/orders/${order.orderId}`)} className="rounded-full border-amber-200 text-amber-800 hover:bg-amber-100">Review<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button></div>; })}</div></section>;
+}

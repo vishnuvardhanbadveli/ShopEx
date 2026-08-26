@@ -1,0 +1,1 @@
+ALTER TABLE `user_preferences` MODIFY COLUMN `favoriteCategories` varchar(512) NOT NULL DEFAULT '[]';

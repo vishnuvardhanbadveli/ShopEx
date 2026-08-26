@@ -1,0 +1,144 @@
+{
+  "project_info": {
+    "title": "ShopEx",
+    "created": 1787647478.051,
+    "last_updated": 1787647826.641,
+    "total_slides": 12
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "problem",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "protocol_spine",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "catalog",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "policy",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "upsell",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "payment_gate",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "verification",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "audit",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "failure",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "evidence",
+      "state": "edited",
+      "pageNum": 11
+    },
+    {
+      "id": "demo",
+      "state": "edited",
+      "pageNum": 12
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "ShopEx",
+      "summary": "Explainable, bounded, human-approved AI checkout with an append-only payment trail.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "problem",
+      "title": "AI shopping needs an accountability layer",
+      "summary": "Recommendation is not authorization. ShopEx adds clear constraints, explicit approval, and durable evidence around the transaction.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "protocol_spine",
+      "title": "One protocol spine connects intent to payment evidence",
+      "summary": "Show the buyer journey and service boundaries from natural-language intent to catalog, policy, approval, Razorpay, and audit.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "catalog",
+      "title": "The catalog is transactable by an AI buyer",
+      "summary": "Show the structured product feed and how the buyer request becomes a bounded candidate set.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "policy",
+      "title": "Policy verification is separate from the language model",
+      "summary": "Show deterministic checks for budget, category, stock, delivery, and attributes with human-readable reasons.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "upsell",
+      "title": "The add-on is bounded, optional, and re-verified",
+      "summary": "Show a single contextual cross-sell and the second budget check before it can enter the basket.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "payment_gate",
+      "title": "Payment is a human-approved transition",
+      "summary": "Show the explicit approval boundary, server-created Razorpay Test Mode order, and protected secret handling.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "verification",
+      "title": "Two independent checks protect the payment boundary",
+      "summary": "Show payment signature verification, raw-body webhook verification, durable idempotency, and captured-state transition.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "audit",
+      "title": "The audit trail makes every decision inspectable",
+      "summary": "Show actor, action, result, provider identifiers, and transition evidence in an append-only trail.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "failure",
+      "title": "Failure is a first-class state",
+      "summary": "Show graceful policy rejection, payment decline, invalid signature, and persistence failure without silent retries.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "evidence",
+      "title": "What is proven — and what remains",
+      "summary": "Summarize 30 passing tests, 2 intentional skips, TypeScript validation, and the opt-in live credential check.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "demo",
+      "title": "The demo moment: show the gate, then show the evidence",
+      "summary": "Give judges a crisp ShopEx demo sequence and close on accountability rather than autonomous spending.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}
