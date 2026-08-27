@@ -219,6 +219,10 @@ function ExternalProductCard({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
+<p className="mt-4 rounded-xl border border-violet-100 bg-violet-50/60 p-3 text-xs leading-5 text-slate-600">
+  ShopEx found this live listing through Google Shopping.
+  Review the seller's page before purchasing.
+</p>
           <span className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700">
             Google Shopping
           </span>

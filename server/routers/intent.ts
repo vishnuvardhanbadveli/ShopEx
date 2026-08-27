@@ -6,7 +6,11 @@ const parsedIntent = z.object({
   product: z.string().min(1).max(160),
   category: z.string().min(1).max(80),
   budget: z.number().int().positive().max(10_000_000),
-  currency: z.string().min(1).max(10),
+  currency: z
+  .string()
+  .min(3)
+  .max(3)
+  .transform((value) => value.toUpperCase()),
   connectivity: z.string().min(1).max(120),
   purpose: z.string().min(1).max(160),
   deliveryDays: z.number().int().min(1).max(60),
@@ -98,12 +102,13 @@ async function parseWithGemini(prompt: string): Promise<ParsedIntent> {
             {
               text:
                 "You are ShopEx's product-shopping intent parser. " +
-                "Extract only information explicitly requested by the buyer. " +
-                "Never invent product requirements. " +
-                "If budget is not specified, return 0. " +
-                "If delivery is not specified, return 60. " +
-                "Use 'Not specified' for unspecified textual fields. " +
-                "Keep attributes and constraints concise and useful for product search.",
+"Extract only information explicitly requested by the buyer. " +
+"Never invent product requirements. " +
+"If budget is not specified, return 0. " +
+"If delivery is not specified, return 60. " +
+"Use 'Not specified' for unspecified textual fields. " +
+"Currency MUST be a three-letter ISO currency code such as INR, USD, or GBP. " +
+"Keep attributes and constraints concise and useful for product search.",
             },
           ],
         },
@@ -116,7 +121,7 @@ async function parseWithGemini(prompt: string): Promise<ParsedIntent> {
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: geminiSchema,
-          temperature: 0.1,
+         
         },
       }),
     },
@@ -161,13 +166,17 @@ function fallbackIntent(prompt: string): ParsedIntent {
 
   const budget = budgetMatch ? Number(budgetMatch[1]) : 0;
 
-  const dayMatch = text.match(
-    /(?:within|under|in|delivered in)\s+(\d+)\s*days?/i,
-  );
+  const numericDayMatch = text.match(
+  /(?:within|under|in|delivered in)\s+(\d+)\s*days?/i,
+);
 
-  const deliveryDays = dayMatch
-    ? Math.max(1, Math.min(60, Number(dayMatch[1])))
+const deliveryDays = numericDayMatch
+  ? Math.max(1, Math.min(60, Number(numericDayMatch[1])))
+  : /\b(within|in)\s+(?:a\s+)?week\b/i.test(text)
+    ? 7
     : 60;
+
+  
 
   const attributes = [
     "wireless",
@@ -183,7 +192,11 @@ function fallbackIntent(prompt: string): ParsedIntent {
   ].filter(attribute => text.includes(attribute));
 
   return {
-    product: prompt.trim(),
+    product: prompt
+  .replace(/(?:under|below|less than|max(?:imum)?)\s*(?:₹|rs\.?|inr|\$)?\s*\d[\d,]*/gi, "")
+  .replace(/(?:within|in|delivered in)\s+(?:\d+\s*days?|a\s+week)/gi, "")
+  .replace(/\s+/g, " ")
+  .trim(),
     category,
     budget,
     currency: text.includes("₹") || text.includes("inr") || text.includes("rs")
