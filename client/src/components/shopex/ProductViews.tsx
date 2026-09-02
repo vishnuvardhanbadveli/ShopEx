@@ -39,7 +39,6 @@ export function ProductDiscovery({
   onExternalSelect,
   onBack,
 }: DiscoveryProps) {
-  const hasExternalProducts = externalProducts.length > 0;
   const suitableCount =
     candidates.filter((item) => item.pass).length + externalProducts.length;
 
@@ -73,38 +72,63 @@ export function ProductDiscovery({
         </div>
       </div>
 
-      {hasExternalProducts ? (
-        <div className="grid gap-5 sm:grid-cols-2">
-  {[...externalProducts]
-    .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
-    .map((product) => (
-      <ExternalProductCard
-        key={product.sku}
-        item={product}
-        onSelect={() => onExternalSelect?.(product)}
-      />
-    ))}
+      <div className="space-y-10">
+  {externalProducts.length > 0 && (
+    <div>
+      <div className="mb-4">
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-violet-600">
+          Live from Google Shopping
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          Live listings from external sellers. View the seller to purchase.
+        </p>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        {externalProducts.map((product) => (
+          <ExternalProductCard
+            key={product.sku}
+            item={product}
+            onSelect={() => onExternalSelect?.(product)}
+          />
+        ))}
+      </div>
+    </div>
+  )}
+
+  {candidates.length > 0 && (
+    <div>
+      <div className="mb-4">
+        <p className="text-xs font-semibold uppercase tracking-[.16em] text-slate-700">
+          ShopEx recommendations
+        </p>
+        <p className="mt-1 text-sm text-slate-500">
+          Products from the ShopEx catalog that can continue through checkout.
+        </p>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        {candidates.map(({ item, pass, reasons }) => (
+          <ProductCard
+            key={item.sku}
+            item={item}
+            pass={pass}
+            reasons={reasons}
+            selected={item.sku === selectedSku}
+            onSelect={() => onSelect(item.sku)}
+          />
+        ))}
+      </div>
+    </div>
+  )}
+
+  {!externalProducts.length && !candidates.length && (
+    <div className="rounded-[18px] border border-amber-100 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
+      No products were found for this request. Edit the request or try
+      another search.
+    </div>
+  )}
 </div>
-          
-      ) : candidates.length ? (
-        <div className="grid gap-5 sm:grid-cols-2">
-          {candidates.map(({ item, pass, reasons }) => (
-            <ProductCard
-              key={item.sku}
-              item={item}
-              pass={pass}
-              reasons={reasons}
-              selected={item.sku === selectedSku}
-              onSelect={() => onSelect(item.sku)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-[18px] border border-amber-100 bg-amber-50 p-6 text-sm leading-6 text-amber-900">
-          No products were found for this request. Edit the request or try
-          another search.
-        </div>
-      )}
     </section>
   );
 }

@@ -74,7 +74,7 @@ export default function Home() {
   {
     query: intent.product || "popular products",
     maxPrice: intent.budget > 0 ? intent.budget : undefined,
-    deliveryDays: intent.deliveryDays < 7 ? intent.deliveryDays : undefined,
+    deliveryDays: intent.deliveryDays < 60 ? intent.deliveryDays : undefined,
   },
   {
     enabled: false,
