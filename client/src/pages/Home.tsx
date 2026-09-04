@@ -108,6 +108,12 @@ export default function Home() {
   const selectedResult = candidateResults.find((candidate) => candidate.item.sku === selected?.sku);
   const policyPass = Boolean(selected && selectedResult?.pass && total <= intent.budget);
   const currentOrder = orderStatus.data?.order ?? myOrders.data?.find((order) => order.orderId === activeOrderId);
+  useEffect(() => {
+  if (stage === "order-detail" && activeOrderId) {
+    orderStatus.refetch();
+    myOrders.refetch();
+  }
+}, [stage, activeOrderId]);
   const approvalItem = selected ?? currentOrder?.product ?? undefined;
   const approvalUpsell = upsell ?? currentOrder?.upsell ?? undefined;
   const approvalTotal = currentOrder ? currentOrder.amount / 100 : total;
@@ -314,13 +320,19 @@ export default function Home() {
         return;
       }
       verifyPayment.mutate({ orderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature }, {
-        onSuccess: () => {
-          setPaymentState(paymentFlowReducer("awaiting", { type: "PAYMENT_VERIFIED" }));
-          addAudit({ time: time(), actor: "ShopEx", action: "PAYMENT_VERIFIED", result: `${response.razorpay_payment_id} · waiting for provider confirmation`, tone: "lime", detail: { orderId: response.razorpay_order_id, provider: "Razorpay", transition: "awaiting → verified" } });
+        onSuccess: async () => {
+  setPaymentState(
+    paymentFlowReducer("awaiting", { type: "PAYMENT_VERIFIED" })
+  );
+
+  addAudit({ time: time(), actor: "ShopEx", action: "PAYMENT_VERIFIED", result: `${response.razorpay_payment_id} · waiting for provider confirmation`, tone: "lime", detail: { orderId: response.razorpay_order_id, provider: "Razorpay", transition: "awaiting → verified" } });
         },
         onError: () => {
           setPaymentState(paymentFlowReducer("awaiting", { type: "SIGNATURE_INVALID" }));
           addAudit({ time: time(), actor: "ShopEx", action: "PAYMENT_NOT_VERIFIED", result: "The payment signature did not match", tone: "red", detail: { orderId: response.razorpay_order_id, provider: "Razorpay", failure: "invalid signature", transition: "awaiting → invalid_signature" } });
+             orderStatus.refetch();
+             myOrders.refetch();
+          
         },
       });
     } });
@@ -338,18 +350,62 @@ export default function Home() {
       startLogin();
       return;
     }
-    if (!selected || !policyPass) return;
+    console.log("[ShopEx] approvePayment clicked", {
+  authenticated: Boolean(auth.data),
+  selectedSku: selected?.sku,
+  policyPass,
+  paymentState,
+  addressId: selectedAddressId,
+});
+
+if (!selected || !policyPass) return;
     const approvedState = paymentFlowReducer("idle", { type: "APPROVAL_RECORDED" });
     setPaymentState(approvedState); setStage("approval");
     addAudit({ time: time(), actor: "You", action: "PURCHASE_APPROVED", result: `${money(total)} · authorization recorded`, tone: "lime" });
-      createOrder.mutate({ amount: total * 100, receipt: `shopex_${Date.now()}`, sku: selected.sku, includeUpsell: Boolean(upsell), upsellSku: upsell?.sku, addressId: selectedAddressId, intent }, {
-      onSuccess: ({ keyId, order }) => {
-        setPaymentState(paymentFlowReducer(approvedState, { type: "CHECKOUT_READY" }));
-        addAudit({ time: time(), actor: "Razorpay", action: "ORDER_CREATED", result: `${order.id} · ${money(order.amount / 100)}`, tone: "blue", detail: { orderId: order.id, provider: "Razorpay", transition: "approved → awaiting" } });
-        openRazorpayCheckout(keyId, order);
-      },
-      onError: (error) => { setPaymentState("failed"); addAudit({ time: time(), actor: "Razorpay", action: "ORDER_CREATE_FAILED", result: error.message || "The order could not be created", tone: "red", detail: { provider: "Razorpay", failure: error.message, transition: "approved → failed" } }); },
-    });
+      createOrder.mutate(
+  {
+    amount: total * 100,
+    receipt: `shopex_${Date.now()}`,
+    sku: selected.sku,
+    includeUpsell: Boolean(upsell),
+    upsellSku: upsell?.sku,
+    addressId: selectedAddressId,
+    intent,
+  },
+  {
+    onSuccess: ({ keyId, order }) => {
+      setPaymentState(
+        paymentFlowReducer(approvedState, {
+          type: "CHECKOUT_READY",
+        })
+      );
+
+      addAudit({
+        time: time(),
+        actor: "Razorpay",
+        action: "ORDER_CREATED",
+        result: `${order.id}`,
+        tone: "blue",
+      });
+
+      openRazorpayCheckout(keyId, order);
+    },
+
+    onError: (error) => {
+      console.error("[ShopEx] createOrder failed:", error);
+
+      setPaymentState("failed");
+
+      addAudit({
+        time: time(),
+        actor: "ShopEx",
+        action: "ORDER_CREATE_FAILED",
+        result: String(error),
+        tone: "red",  
+          });
+    },
+  }
+);
   }
 
   async function resumePayment() {

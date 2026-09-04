@@ -37,7 +37,44 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   
-  registerOAuthRoutes(app);
+registerOAuthRoutes(app);
+
+// Local demo authentication for the buildathon prototype.
+// This does not affect the existing OAuth flow.
+app.post("/api/demo/login", (_req, res) => {
+  res.cookie("shopex_demo_session", "demo-user", {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: false,
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+
+  res.json({
+    success: true,
+    user: {
+      id: 1,
+      openId: "shopex-demo-user",
+      name: "ShopEx Demo User",
+      email: "demo@shopex.local",
+      loginMethod: "demo",
+      role: "user",
+    },
+  });
+});
+
+app.post("/api/demo/logout", (_req, res) => {
+  res.clearCookie("shopex_demo_session", {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: false,
+  });
+
+  res.json({ success: true });
+});
+
+
   // tRPC API
   app.use(
     "/api/trpc",

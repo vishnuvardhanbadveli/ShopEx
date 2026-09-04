@@ -110,12 +110,10 @@ export const paymentRouter = router({
     try {
       const startedAt = Date.now();
       const selected = await getCatalogProductBySku(input.sku);
-      if (selected === "unavailable") throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "Catalog service is unavailable" });
       if (!selected) throw new TRPCError({ code: "NOT_FOUND", message: "Selected product was not found" });
       if (selected.stock < 1) throw new TRPCError({ code: "CONFLICT", message: "Selected product is no longer available" });
 
       const upsell = input.upsellSku ? await getCatalogProductBySku(input.upsellSku) : undefined;
-      if (upsell === "unavailable") throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "Catalog service is unavailable" });
       if (input.upsellSku && !upsell) throw new TRPCError({ code: "NOT_FOUND", message: "Selected add-on was not found" });
       if (upsell && upsell.stock < 1) throw new TRPCError({ code: "CONFLICT", message: "Selected add-on is no longer available" });
       if (Boolean(input.upsellSku) !== input.includeUpsell) throw new TRPCError({ code: "BAD_REQUEST", message: "Add-on selection does not match the order request" });

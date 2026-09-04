@@ -87,7 +87,14 @@ export function CustomerOrderDetail() {
   const [, params] = useRoute("/profile/orders/:orderId");
   const [, setLocation] = useLocation();
   const orderId = params?.orderId ?? "";
-  const orderQuery = trpc.payment.orderStatus.useQuery({ orderId }, { enabled: Boolean(user && orderId), refetchInterval: 3000 });
+const orderQuery = trpc.payment.orderStatus.useQuery(
+  { orderId },
+  {
+    enabled: Boolean(user && orderId),
+    refetchInterval: 2000,
+    refetchOnMount: "always",
+  }
+);
   const timelineQuery = trpc.payment.orderTimeline.useQuery({ orderId, limit: 50 }, { enabled: Boolean(user && orderId), refetchInterval: 5000 });
   const resumeQuery = trpc.payment.resumeOrder.useQuery({ orderId }, { enabled: false });
   if (loading || !user || orderQuery.isLoading) return <ProfileLoading />;

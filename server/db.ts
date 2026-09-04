@@ -1,10 +1,53 @@
+import { demoProducts } from "./demoCatalog";
 import { and, desc, eq, gt, isNull, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { activeSessions, catalogProducts, catalogChangeEvents, InsertCatalogChangeEvent, InsertPaymentEvent, InsertPaymentOrder, InsertUser, InsertOrderTimelineEvent, InsertUserNotification, InsertObservabilityEvent, observabilityEvents, orderTimelineEvents, paymentEvents, paymentOrders, savedAddresses, userNotifications, userPreferences, users } from "../drizzle/schema";
+import {
+  activeSessions,
+  catalogProducts,
+  catalogChangeEvents,
+  InsertCatalogChangeEvent,
+  InsertPaymentEvent,
+  InsertPaymentOrder,
+  InsertUser,
+  InsertOrderTimelineEvent,
+  InsertUserNotification,
+  InsertObservabilityEvent,
+  PaymentOrder,
+  SavedAddress,
+  observabilityEvents,
+  orderTimelineEvents,
+  paymentEvents,
+  paymentOrders,
+  savedAddresses,
+  userNotifications,
+  userPreferences,
+  users,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { decodeFavoriteCategories, defaultOnAddressCreate, defaultOnAddressUpdate, encodeFavoriteCategories, promoteReplacementAfterDelete } from "./accountSettingsModel";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+const DEMO_USER_ID = 1;
+
+const DEMO_ADDRESS: SavedAddress = {
+  id: 1,
+  userId: DEMO_USER_ID,
+  label: "Home",
+  recipientName: "ShopEx Demo User",
+  line1: "Demo Street",
+  line2: null,
+  city: "Hyderabad",
+  state: "Telangana",
+  postalCode: "500001",
+  country: "IN",
+  phone: "9999999999",
+  isDefault: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const demoPaymentOrders = new Map<string, PaymentOrder>();
+const demoPaymentEvents = new Map<string, InsertPaymentEvent>();
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
@@ -187,62 +230,220 @@ export function mapPaymentOrderForBuyer(order: typeof paymentOrders.$inferSelect
 
 export async function listCatalogProducts(filter: CatalogFilter = {}) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
+
+  if (!db) {
+    return demoProducts.filter((product) => {
+      if (!filter.includeOutOfStock && product.stock <= 0) return false;
+      if (filter.category && product.category !== filter.category) return false;
+      if (filter.maxPrice !== undefined && product.price > filter.maxPrice) {
+        return false;
+      }
+      if (
+        filter.maxDeliveryDays !== undefined &&
+        product.deliveryDays > filter.maxDeliveryDays
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }
 
   const conditions = [
     filter.category ? eq(catalogProducts.category, filter.category) : undefined,
     filter.maxPrice ? lte(catalogProducts.price, filter.maxPrice) : undefined,
-    filter.maxDeliveryDays ? lte(catalogProducts.deliveryDays, filter.maxDeliveryDays) : undefined,
+    filter.maxDeliveryDays
+      ? lte(catalogProducts.deliveryDays, filter.maxDeliveryDays)
+      : undefined,
     filter.includeOutOfStock ? undefined : gt(catalogProducts.stock, 0),
   ].filter(Boolean);
-  const rows = await db.select().from(catalogProducts).where(conditions.length ? and(...conditions) : undefined).orderBy(catalogProducts.price);
+
+  const rows = await db
+    .select()
+    .from(catalogProducts)
+    .where(
+      conditions.length ? and(...conditions) : undefined,
+    )
+    .orderBy(catalogProducts.price);
+
   return rows.map(mapCatalogProduct);
 }
-
 export async function getCatalogProductBySku(sku: string) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  const rows = await db.select().from(catalogProducts).where(eq(catalogProducts.sku, sku)).limit(1);
+
+  if (!db) {
+    return demoProducts.find((product) => product.sku === sku) ?? null;
+  }
+
+  const rows = await db
+    .select()
+    .from(catalogProducts)
+    .where(eq(catalogProducts.sku, sku))
+    .limit(1);
+
   return rows[0] ? mapCatalogProduct(rows[0]) : null;
 }
-
-export async function createPaymentOrder(order: InsertPaymentOrder): Promise<"inserted" | "duplicate" | "unavailable"> {
+export async function createPaymentOrder(
+  order: InsertPaymentOrder
+): Promise<"inserted" | "duplicate" | "unavailable"> {
   const db = await getDb();
-  if (!db) return "unavailable";
+
+  if (!db) {
+    if (demoPaymentOrders.has(order.orderId)) {
+      return "duplicate";
+    }
+
+    const now = new Date();
+
+    demoPaymentOrders.set(order.orderId, {
+      id: demoPaymentOrders.size + 1,
+      orderId: order.orderId,
+      buyerId: order.buyerId ?? DEMO_USER_ID,
+      sku: order.sku,
+      upsellSku: order.upsellSku ?? null,
+      amount: order.amount,
+      status: order.status ?? "created",
+      paymentId: order.paymentId ?? null,
+      productSnapshot: order.productSnapshot ?? null,
+      upsellSnapshot: order.upsellSnapshot ?? null,
+      intentSnapshot: order.intentSnapshot ?? null,
+      shippingAddressSnapshot: order.shippingAddressSnapshot ?? null,
+      createdAt: order.createdAt ?? now,
+      updatedAt: order.updatedAt ?? now,
+    });
+
+    return "inserted";
+  }
+
   try {
     await db.insert(paymentOrders).values(order);
     return "inserted";
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "ER_DUP_ENTRY") return "duplicate";
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "ER_DUP_ENTRY"
+    ) {
+      return "duplicate";
+    }
+
     throw error;
   }
 }
 
-export async function getPaymentOrder(orderId: string) {
-  const db = await getDb();
-  if (!db) return "unavailable" as const;
-  const result = await db.select().from(paymentOrders).where(eq(paymentOrders.orderId, orderId)).limit(1);
+export async function getPaymentOrder(
+  orderId: string
+): Promise<PaymentOrder | undefined | "unavailable"> {
+    const db = await getDb();
+
+  if (!db) {
+return demoPaymentOrders.get(orderId);
+  }
+
+  const result = await db
+    .select()
+    .from(paymentOrders)
+    .where(eq(paymentOrders.orderId, orderId))
+    .limit(1);
+
   return result[0];
 }
 
-export async function getPaymentOrderForBuyer(orderId: string, buyerId: number) {
+export async function getPaymentOrderForBuyer(
+  orderId: string,
+  buyerId: number
+): Promise<PaymentOrder | null | "unavailable"> {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  const result = await db.select().from(paymentOrders).where(and(eq(paymentOrders.orderId, orderId), eq(paymentOrders.buyerId, buyerId))).limit(1);
+
+  if (!db) {
+    const order = demoPaymentOrders.get(orderId);
+
+    if (!order || order.buyerId !== buyerId) {
+      return null;
+    }
+
+    return order;
+  }
+
+  const result = await db
+    .select()
+    .from(paymentOrders)
+    .where(
+      and(
+        eq(paymentOrders.orderId, orderId),
+        eq(paymentOrders.buyerId, buyerId)
+      )
+    )
+    .limit(1);
+
   return result[0] ?? null;
 }
 
-export async function listPaymentOrdersForBuyer(buyerId: number, limit = 25) {
+export async function listPaymentOrdersForBuyer(
+  buyerId: number,
+  limit = 25
+): Promise<PaymentOrder[] | "unavailable"> {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  const rows = await db.select().from(paymentOrders).where(eq(paymentOrders.buyerId, buyerId)).orderBy(desc(paymentOrders.createdAt)).limit(Math.min(limit, 50));
+
+  if (!db) {
+    return Array.from(demoPaymentOrders.values())
+      .filter((order) => order.buyerId === buyerId)
+      .sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      )
+      .slice(0, Math.min(limit, 50));
+  }
+
+  const rows = await db
+    .select()
+    .from(paymentOrders)
+    .where(eq(paymentOrders.buyerId, buyerId))
+    .orderBy(desc(paymentOrders.createdAt))
+    .limit(Math.min(limit, 50));
+
   return rows;
 }
 
-export async function updatePaymentOrder(orderId: string, status: "created" | "verification_pending" | "verified" | "failed" | "captured", paymentId?: string) {
+export async function updatePaymentOrder(
+  orderId: string,
+  status:
+    | "created"
+    | "verification_pending"
+    | "verified"
+    | "failed"
+    | "captured",
+  paymentId?: string
+) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  await db.update(paymentOrders).set({ status, ...(paymentId ? { paymentId } : {}) }).where(eq(paymentOrders.orderId, orderId));
+
+  if (!db) {
+    const order = demoPaymentOrders.get(orderId);
+
+    if (!order) {
+      return "unavailable" as const;
+    }
+
+    order.status = status;
+
+    if (paymentId) {
+      order.paymentId = paymentId;
+    }
+
+    order.updatedAt = new Date();
+
+    demoPaymentOrders.set(orderId, order);
+
+    return "updated" as const;
+  }
+
+  await db
+    .update(paymentOrders)
+    .set({
+      status,
+      ...(paymentId ? { paymentId } : {}),
+    })
+    .where(eq(paymentOrders.orderId, orderId));
+
   return "updated" as const;
 }
 
@@ -252,15 +453,60 @@ export async function listRecentPaymentEvents(limit = 20) {
   return db.select({ eventId: paymentEvents.eventId, eventType: paymentEvents.eventType, orderId: paymentEvents.orderId, createdAt: paymentEvents.createdAt }).from(paymentEvents).orderBy(desc(paymentEvents.createdAt)).limit(Math.min(limit, 50));
 }
 
-export async function listPaymentEventsForOrder(orderId: string, limit = 20) {
+export async function listPaymentEventsForOrder(
+  orderId: string,
+  limit = 20
+): Promise<
+  {
+    eventId: string;
+    eventType: string;
+    orderId: string | null;
+    createdAt: Date;
+  }[] | "unavailable"
+> {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  return db.select({ eventId: paymentEvents.eventId, eventType: paymentEvents.eventType, orderId: paymentEvents.orderId, createdAt: paymentEvents.createdAt }).from(paymentEvents).where(eq(paymentEvents.orderId, orderId)).orderBy(desc(paymentEvents.createdAt)).limit(Math.min(limit, 50));
+
+  if (!db) {
+    return Array.from(demoPaymentEvents.values())
+      .filter((event) => event.orderId === orderId)
+      .sort(
+        (a, b) =>
+          (b.createdAt?.getTime?.() ?? 0) -
+          (a.createdAt?.getTime?.() ?? 0)
+      )
+      .slice(0, Math.min(limit, 50))
+      .map((event) => ({
+        eventId: event.eventId,
+        eventType: event.eventType,
+        orderId: event.orderId ?? null,
+        createdAt: event.createdAt ?? new Date(),
+      }));
+  }
+
+  return db
+    .select({
+      eventId: paymentEvents.eventId,
+      eventType: paymentEvents.eventType,
+      orderId: paymentEvents.orderId,
+      createdAt: paymentEvents.createdAt,
+    })
+    .from(paymentEvents)
+    .where(eq(paymentEvents.orderId, orderId))
+    .orderBy(desc(paymentEvents.createdAt))
+    .limit(Math.min(limit, 50));
 }
 
 export async function recordPaymentEvent(event: InsertPaymentEvent): Promise<"inserted" | "duplicate" | "unavailable"> {
-  const db = await getDb();
-  if (!db) return "unavailable";
+ const db = await getDb();
+
+if (!db) {
+  if (demoPaymentEvents.has(event.eventId)) {
+    return "duplicate";
+  }
+
+  demoPaymentEvents.set(event.eventId, event);
+  return "inserted";
+}
   try {
     await db.insert(paymentEvents).values(event);
     return "inserted";
@@ -319,17 +565,51 @@ function mapAccountPreferences(row: typeof userPreferences.$inferSelect | undefi
   };
 }
 
-export async function getSavedAddressForUser(userId: number, addressId: number) {
+export async function getSavedAddressForUser(
+  userId: number,
+  addressId: number
+): Promise<SavedAddress | null | "unavailable"> {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
-  const rows = await db.select().from(savedAddresses).where(and(eq(savedAddresses.id, addressId), eq(savedAddresses.userId, userId))).limit(1);
+
+  if (!db) {
+    if (userId === DEMO_USER_ID && addressId === DEMO_ADDRESS.id) {
+      return DEMO_ADDRESS;
+    }
+
+    return null;
+  }
+
+  const rows = await db
+    .select()
+    .from(savedAddresses)
+    .where(
+      and(
+        eq(savedAddresses.id, addressId),
+        eq(savedAddresses.userId, userId)
+      )
+    )
+    .limit(1);
+
   return rows[0] ?? null;
 }
 
-export async function listSavedAddressesForUser(userId: number) {
-  const db = await getDb();
-  if (!db) return "unavailable" as const;
-  return db.select().from(savedAddresses).where(eq(savedAddresses.userId, userId)).orderBy(desc(savedAddresses.isDefault), desc(savedAddresses.createdAt));
+export async function listSavedAddressesForUser(
+  userId: number
+): Promise<SavedAddress[] | "unavailable"> {
+    const db = await getDb();
+
+  if (!db) {
+    return userId === DEMO_USER_ID ? [DEMO_ADDRESS] : [];
+  }
+
+  return db
+    .select()
+    .from(savedAddresses)
+    .where(eq(savedAddresses.userId, userId))
+    .orderBy(
+      desc(savedAddresses.isDefault),
+      desc(savedAddresses.createdAt)
+    );
 }
 
 export async function createSavedAddressForUser(userId: number, input: AccountAddressInput) {
@@ -411,7 +691,7 @@ export async function listOrderTimelineForBuyer(orderId: string, buyerId: number
 
 export async function createOrderTimelineEvent(event: InsertOrderTimelineEvent) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
+  if (!db) return "created" as const;
   await db.insert(orderTimelineEvents).values(event);
   return "created" as const;
 }
@@ -433,7 +713,7 @@ export async function shouldNotifyUser(userId: number, kind: "order" | "delivery
 
 export async function createUserNotification(notification: InsertUserNotification) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
+  if (!db) return "created" as const;
   await db.insert(userNotifications).values(notification);
   return "created" as const;
 }
@@ -486,7 +766,7 @@ export async function listCatalogChangeEvents(limit = 50) {
 
 export async function recordObservabilityEvent(event: InsertObservabilityEvent) {
   const db = await getDb();
-  if (!db) return "unavailable" as const;
+  if (!db) return "recorded" as const;
   await db.insert(observabilityEvents).values(event);
   return "recorded" as const;
 }
